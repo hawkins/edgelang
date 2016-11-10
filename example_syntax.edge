@@ -1,0 +1,39 @@
+| Single-line comment
+
+|- Multi-line
+   comments? I'm not crazy about them
+-|
+
+| Each file has a config section where they can optionally override defaults
+begin config
+weighted: true
+directed: false
+edgelabels: false
+vertexlabelss: false
+end
+
+
+| We can represent single edges like so
+| Vertex(, Label) -> Vertex(, Weight)(, Label)
+A -> B, 5
+
+
+| Or for more intricate graphs, a vertex can have edges like so
+| Vertex(, Label) ::
+| _ Vertex(, Weight)(, Label)
+A ::
+_ -> C, 3
+_ -> P, 0
+
+
+| Note that in the previous example, :: stores the left-hand vertex in the vvariable _ by default so we can easily recall it.
+| Additionally we can define other vetexes as variables in case users would organize their file differently, like so:
+
+B :: expression
+C :: term
+F :: factor
+
+expression -> term
+term -> factor
+expression -> factor, 2
+
