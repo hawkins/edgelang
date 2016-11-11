@@ -24,7 +24,7 @@ end
 A :: start
 B :: left
 C :: right
-
+| Define edges between vertices
 start -> left
 start -> right
 left -> right
@@ -61,5 +61,11 @@ This parser can be tested by running commands such as:
 ```
 cd parser
 make
-./parse.exe test/program0.edge test/test.js
+./parse.exe -i test/program0.edge -o test/test.js
+```
+
+Alternatively, you can use the REPL with the `-r` flag:
+
+```
+./parse.exe -r -o test/test.js
 ```
