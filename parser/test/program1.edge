@@ -13,20 +13,26 @@ vertexlabel: false
 end
 
 
-| We can represent single edges like so
-A -> B
+| We can define vertices and represent edges between them like so
+B :: b
+A :: a
+a -> b
 
 
 | Or for more intricate graphs, a vertex can have edges like so
 | Vertex(, Label) ::
 | _ Vertex(, Weight)(, Label)
+| _ Vertex(, Weight)(, Label)
+| This way, you can easily implicitly edges without worrying about identifiers
+C :: id
+P :: id2
 A ::
 _ -> C
 _ -> P
 
 
-| Note that in the previous example, :: stores the left-hand vertex in the vvariable _ by default so we can easily recall it.
-| Additionally we can define other vetexes as variables in case users would organize their file differently, like so:
+| Note that in the previous example, :: stores the left-hand vertex in the variable _ by default so we can easily recall it.
+| Additionally we can define other vertexes as variables in case users would organize their file differently, like so:
 
 B :: expression
 C :: term

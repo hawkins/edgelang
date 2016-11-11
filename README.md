@@ -2,7 +2,7 @@
 
 Edge is a programming language for expressing graphs in code and can be easily used to present graphical charts.
 
-Edge aims to provide an easy syntax for expressing complicated node networks, automata, or even flow charts.
+Edge aims to provide an easy syntax for expressing complicated node networks, finite automata, or even flow charts.
 
 Basic syntax is as follows:
 
@@ -20,12 +20,20 @@ directed: false
 end
 
 | Let's make a triangle
-A -> B
-B -> C
-C -> A
+| Define vertices
+A :: start
+B :: left
+C :: right
+
+start -> left
+start -> right
+left -> right
 ```
 
 A more complicated example shows where Edge comes in handy:
+
+*Note: Not all complex features of language implemented yet*
+
 ```
 begin config
 weighted: true
@@ -37,8 +45,8 @@ var -> C
 
 | You can even implicitly define an identifier for easier modifications
 A ::
-_ -> B
-_ -> C
+_ -> B, 5
+_ -> C, 7
 ```
 
 ## Parser
@@ -46,8 +54,12 @@ _ -> C
 A recursive descent parser is included in `/parser`.
 This can be made by running `make` inside the directory.
 
-This parser can then be tested by running commands such as:
+The parser will parse the input file, as well as write a JS output file with Node View so you can view the generated graph by loading `parser/test/index.html` in your browser, provided you use Edge to generate `test.js`.
+
+This parser can be tested by running commands such as:
 
 ```
-cat parser/test/program1.edge | ./parser/parse.exe
+cd parser
+make
+./parse.exe test/program0.edge test/test.js
 ```
