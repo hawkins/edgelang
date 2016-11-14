@@ -3,9 +3,9 @@
 # written by Josh Hawkins
 ###############################################################################
 LEX		=	flex
-.PRECIOUS 	=	parser.cpp rules.l lexer.h 
+.PRECIOUS 	=	parser.cpp rules.l lexer.h
 
-parse.exe: lex.yy.o parser.o
+edge: lex.yy.o parser.o
 	g++ -o $@ $^
 
 lex.yy.o: lex.yy.c lexer.h
@@ -17,6 +17,5 @@ parser.o: parser.cpp lexer.h
 lex.yy.c: rules.l
 	$(LEX) $^
 
-clean: 
-	$(RM) *.o lex.yy.c parse.exe
-
+clean:
+	$(RM) *.o lex.yy.c edge

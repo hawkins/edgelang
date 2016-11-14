@@ -47,21 +47,27 @@ bool IsFirstOfM ( void );
 bool IsFirstOfG ( void );
 bool IsFirstOfR ( void );
 
-// Helper function to help print the tree nesting
+// Helper functions
 string psp ( int );
+void addNodeToSet( string, string, bool );
+bool doesNodeExist( string );
 
 // Needed global variables
 typedef map<string, string> SymbolTableT; // Symbol Table
 int iTok;                                 // The current token
 SymbolTableT SymbolTable;                 // The symbol table
-int REPL = 0;
+
+// Flags for program behavior
 int JS = 1;
 int INPUT = 0;
+int PARSE_TREE = 0;
+int DIRECTED = 0;
 
+// JS Output variables
+ofstream jsFile;
 vector<string> nodeLines;
 vector<string> edgeLines;
-// Define JS output file
-ofstream jsFile;
+string defaultLabel = "_";
 
 //*****************************************************************************
 // The main processing loop
@@ -69,18 +75,19 @@ int main (int argc, char* argv[])
 {
   // Ensure we have enough arguments
   if (argc < 3) {
-    cout << "Usage: <parser> [-r][-i <input file>] [-o <js output file>]" << endl;
+    cout << "Usage: edge [-p][-i <input file>] [-o <js output file>]"
+         << endl
+         << "You can exclude input flag to start the Edge REPL."
+         << endl;
     return 1;
   }
 
   // Parse arguments
   int i = 1;
   while (i < argc) {
-    // REPL flag -r/--repl
-    if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--repl") == 0) {
-      REPL = 1;
-
-      yyin = stdin;
+    // Parse tree
+    if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--parse-tree") == 0) {
+      PARSE_TREE = 1;
     }
 
     // Input
@@ -105,20 +112,20 @@ int main (int argc, char* argv[])
     ++i;
   }
 
-  // Exit if no input provided
-  if (!INPUT && !REPL) {
-    cout << "Must specify either -r or -i [INPUT FILE]";
-    return 1;
+  // If INPUT not specified, start REPL
+  if (!INPUT) {
+    yyin = stdin;
+
+    cout << "Edge 0.0.1 REPL"
+         << endl
+         << "To instead read input from file, run \'edge -i inputfile.edge ...''"
+         << endl;
   }
 
-  // Hold each token code
-  int token;
-
-  // Set output stream for flex
-  yyout = stdout;
-
-  // Get the first token
-  iTok = yylex();
+  // Prepare parser
+  int token;      // Hold each token code
+  yyout = stdout; // Set output stream for flex
+  iTok = yylex(); // Get the first token
 
   // Begin parsing
   try {
@@ -132,19 +139,30 @@ int main (int argc, char* argv[])
       throw "end of file expected, but there is more here!";
   } catch(char const *errmsg) {
     cout << endl << "***ERROR (line " << yyLine << "): "<< errmsg << endl;
-    if (INPUT) fclose(yyin);
+
+    if (INPUT)
+      fclose(yyin);
+
     return 1;
   }
 
-  // Print success
-  cout << endl
-       << "=== Edge language parse was successful ==="
-       << endl << endl;;
+  // Close input file
+  if (INPUT)
+    fclose(yyin);
 
-  // Print out the symbol table
-  SymbolTableT::iterator it;
-  for (it = SymbolTable.begin(); it != SymbolTable.end(); ++it) {
-    cout << "symbol = " << it->first << ", value = " << it->second << endl;
+  if (PARSE_TREE) {
+    // Print success
+    cout << endl
+         << "=== Edge parse was successful ==="
+         << endl << endl;
+
+    // Print out the symbol table
+    SymbolTableT::iterator it;
+    for (it = SymbolTable.begin(); it != SymbolTable.end(); ++it) {
+      cout << "Vertex = " << it->first << ", Label = " << it->second << endl;
+    }
+
+    // TODO: Print out edges
   }
 
   // Write nodes to JS
@@ -161,7 +179,6 @@ int main (int argc, char* argv[])
   jsFile.close();
 
   // Return 0 to indicate successful run
-  if (INPUT) fclose(yyin);
   return 0;
 }
 
@@ -172,7 +189,8 @@ void P ()
   static int Pcnt = 0;
   int CurPcnt = Pcnt++;
 
-  cout << psp(CurPcnt) << "enter P " << CurPcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurPcnt) << "enter P " << CurPcnt << endl;
 
   // There might be a series of S's
   while (IsFirstOfS())
@@ -181,7 +199,8 @@ void P ()
   // Read the next token
   iTok = yylex();
 
-  cout << psp(CurPcnt) << "exit P " << CurPcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurPcnt) << "exit P " << CurPcnt << endl;
 }
 
 //*****************************************************************************
@@ -195,7 +214,8 @@ void S ()
   char const *Serr =
     "statement does not start with 'begin', '|', '|-', or vertex";
 
-  cout << psp(CurScnt) << "enter S " << CurScnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurScnt) << "enter S " << CurScnt << endl;
 
   // HACK: Set iTok if _ is found
   if (strcmp(yytext, "_") == 0)
@@ -247,7 +267,8 @@ void S ()
       throw Serr;
   }
 
-  cout << psp(CurScnt) << "exit S " << CurScnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurScnt) << "exit S " << CurScnt << endl;
 }
 
 
@@ -258,23 +279,27 @@ void A (string vertex)
   static int Acnt = 0;
   int CurAcnt = Acnt++;
 
-  cout << psp(CurAcnt) << "enter A " << CurAcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurAcnt) << "enter A " << CurAcnt << endl;
 
   // We know we have found :: since we've determined this is assignment
-  cout << "-->found " << yytext << endl;
+  if (PARSE_TREE)
+    cout << "-->found " << yytext << endl;
 
   // Next could be an identifier; save its name
   iTok = yylex();
-  string IDname = "_";
+  string IDname = defaultLabel;
   if (iTok == TOK_IDENTIFIER) {
     // Capture and print ID
     IDname = yytext;
-    cout << "-->found ID: " << yytext << endl;
+    if (PARSE_TREE)
+      cout << "-->found ID: " << yytext << endl;
 
     // Read the next token
     iTok = yylex();
   } else {
-    cout << "-->Assuming ID _" << endl;
+    if (PARSE_TREE)
+      cout << "-->Assuming ID: _" << endl;
   }
 
   // If the identifier is not yet in the symbol table, store it there
@@ -287,15 +312,11 @@ void A (string vertex)
   it = SymbolTable.find(vertex);
   it->second = IDname;
 
-  // Write to node lines
-  string node = "\n  var "
-    + vertex
-    + " = graph.createNode({renderData: {name: '"
-    + vertex
-    + "'}});";
-  nodeLines.push_back(node);
+  // Add the node to our output
+  addNodeToSet(vertex, IDname, true);
 
-  cout << psp(CurAcnt) << "exit A " << CurAcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurAcnt) << "exit A " << CurAcnt << endl;
 }
 
 //*****************************************************************************
@@ -307,27 +328,22 @@ void E (string identifier, int lTok)
   string vertexSource;
   string vertexTarget;
 
-  cout << psp(CurEcnt) << "enter E " << CurEcnt << endl;
-
-  // Print source vertex
-  cout << "-->found " << identifier << endl;
+  if (PARSE_TREE)
+    cout << psp(CurEcnt) << "enter E " << CurEcnt << endl;
 
   // Determine if we have an identifier or vertex, and find vertex if appropriate
-  if (lTok == TOK_VERTEX) {
+  if (lTok == TOK_VERTEX)
     vertexSource = identifier;
-  } else {
-    // Lookup vertex from symbol table
-    SymbolTableT::iterator it;
-    for (it = SymbolTable.begin(); it != SymbolTable.end(); it++) {
-      if (strcmp(it->second.c_str(), identifier.c_str()) == 0) {
-        vertexSource = it->first;
-        break;
-      }
-    }
-  }
+  else
+    throw "Unidentified symbol before arrow in edge";
+
+  // Print source vertex
+  if (PARSE_TREE)
+    cout << "-->found " << identifier << endl;
 
   // We have already found an arrow
-  cout << "-->found " << yytext << endl;
+  if (PARSE_TREE)
+    cout << "-->found " << yytext << endl;
 
   // Get next token
   iTok = yylex();
@@ -335,41 +351,35 @@ void E (string identifier, int lTok)
     throw "edge target does not begin with vertex or identifier";
 
   // Determine target vertex
-  cout << "-->found " << yytext << endl;
-  if (iTok == TOK_VERTEX) {
-    // Get vertex
+  if (PARSE_TREE)
+    cout << "-->found " << yytext << endl;
+  if (iTok == TOK_VERTEX)
     vertexTarget = yytext;
+  else
+    throw "Unidentified symbol after arrow in edge";
 
-    // If the identifier is not yet in the symbol table, store it there
-    SymbolTableT::iterator it = SymbolTable.find(vertexTarget);
-    if (it == SymbolTable.end())
-      SymbolTable.insert(pair<string, string>(vertexTarget, "undefined"));
-  } else {
-    // Lookup vertex from symbol table
-    SymbolTableT::iterator it;
-    for (it = SymbolTable.begin(); it != SymbolTable.end(); it++) {
-      if (strcmp(it->second.c_str(), yytext) == 0) {
-        vertexTarget = it->first;
-        break;
-      }
-    }
-  }
-
-  // TODO: Incorporate properties like weight, label
+  // Create vertices if they do not yet exist
+  addNodeToSet(vertexSource, defaultLabel, false);
+  addNodeToSet(vertexTarget, defaultLabel, false);
 
   // Write to edgeLines
   string edge = "\n  graph.linkNodes("
     + vertexSource
     + ", "
-    + vertexTarget
-    + ", { $directedTowards: "
-    + vertexTarget
-    + " });";
+    + vertexTarget;
+  if (DIRECTED) {
+    edge = edge + ", { $directedTowards: "
+      + vertexTarget
+      + " }";
+  }
+  edge = edge + ");";
   edgeLines.push_back(edge);
+
   // Read next token
   iTok = yylex();
 
-  cout << psp(CurEcnt) << "exit E " << CurEcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurEcnt) << "exit E " << CurEcnt << endl;
 }
 
 //*****************************************************************************
@@ -379,16 +389,19 @@ void C ()
   static int Ccnt = 0;
   int CurCcnt = Ccnt++;
 
-  cout << psp(CurCcnt) << "enter C " << CurCcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurCcnt) << "enter C " << CurCcnt << endl;
 
-  cout << "-->found " << yytext << endl;
+  if (PARSE_TREE)
+    cout << "-->found " << yytext << endl;
 
   // Read tokens until end of line
   int currentLine = yyLine;
   while (yyLine == currentLine)
     iTok = yylex();
 
-  cout << psp(CurCcnt) << "exit C " << CurCcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurCcnt) << "exit C " << CurCcnt << endl;
 }
 
 //*****************************************************************************
@@ -398,21 +411,25 @@ void M ()
   static int Mcnt = 0;
   int CurMcnt = Mcnt++;
 
-  cout << "-->found " << yytext << endl;
+  if (PARSE_TREE)
+    cout << "-->found " << yytext << endl;
 
-  cout << psp(CurMcnt) << "enter M " << CurMcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurMcnt) << "enter M " << CurMcnt << endl;
 
   // Read tokens until end of comment found
   while (iTok != TOK_COMMENT_END)
     iTok = yylex();
 
-  cout << "-->found " << yytext << endl;
+  if (PARSE_TREE)
+    cout << "-->found " << yytext << endl;
 
 
   // Read next token
   iTok = yylex();
 
-  cout << psp(CurMcnt) << "exit M " << CurMcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurMcnt) << "exit M " << CurMcnt << endl;
 }
 
 //*****************************************************************************
@@ -422,15 +439,18 @@ void G ()
   static int Gcnt = 0;
   int CurGcnt = Gcnt++;
 
-  cout << psp(CurGcnt) << "enter G " << CurGcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurGcnt) << "enter G " << CurGcnt << endl;
 
   // We've found 'begin'
-  cout << "-->found " << yytext << endl;
+  if (PARSE_TREE)
+    cout << "-->found " << yytext << endl;
 
   // TODO: Process section label
   // We expect to find 'config'
   iTok = yylex();
-  cout << "-->found " << yytext << endl;
+  if (PARSE_TREE)
+    cout << "-->found " << yytext << endl;
 
   // We may see many or no R's
   iTok = yylex();
@@ -444,7 +464,8 @@ void G ()
   // Read next token
   iTok = yylex();
 
-  cout << psp(CurGcnt) << "exit G " << CurGcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurGcnt) << "exit G " << CurGcnt << endl;
 }
 
 //*****************************************************************************
@@ -454,26 +475,40 @@ void R ()
   static int Rcnt = 0;
   int CurRcnt = Rcnt++;
 
-  cout << psp(CurRcnt) << "enter R " << CurRcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurRcnt) << "enter R " << CurRcnt << endl;
 
-  cout << "-->found property " << yytext << endl;
+  if (PARSE_TREE)
+    cout << "-->found property " << yytext << endl;
   string property = yytext;
 
   // We expect to see :
   iTok = yylex();
-  if (iTok == TOK_COLON)
-    cout << "-->found " << yytext << endl;
-  else
+  if (iTok == TOK_COLON) {
+    if (PARSE_TREE)
+      cout << "-->found " << yytext << endl;
+  } else {
     throw "did not find : after property";
+  }
 
   // TODO: Set properties in some table to value
 
   // Get true or false value
   iTok = yylex();
   if (iTok == TOK_TRUE) {
-    cout << "-->found TRUE" << endl;
+    if (PARSE_TREE)
+      cout << "-->found TRUE" << endl;
+
+    // Set flags
+    if (strcmp(property.c_str(), "directed") == 0)
+      DIRECTED = 1;
   } else if (iTok == TOK_FALSE) {
-    cout << "-->found FALSE" << endl;
+    if (PARSE_TREE)
+      cout << "-->found FALSE" << endl;
+
+    // Set flags
+    if (strcmp(property.c_str(), "directed") == 0)
+      DIRECTED = 0;
   } else {
     throw "property not set to true or false";
   }
@@ -481,11 +516,12 @@ void R ()
   // Read next token
   iTok = yylex();
 
-  cout << psp(CurRcnt) << "exit R " << CurRcnt << endl;
+  if (PARSE_TREE)
+    cout << psp(CurRcnt) << "exit R " << CurRcnt << endl;
 }
 
 //*****************************************************************************
-// TODO IsFirstOfX Functions
+// IsFirstOfX Functions
 //*****************************************************************************
 bool IsFirstOfP()
 {
@@ -506,8 +542,6 @@ bool ISFirstOfA()
 //*****************************************************************************
 bool IsFirstOfE()
 {
-  cout << yytext << endl;
-  cout << strcmp(yytext, "_") << endl;
   return iTok == TOK_IDENTIFIER || iTok == TOK_VERTEX;
 }
 //*****************************************************************************
@@ -534,8 +568,46 @@ bool IsFirstOfR()
 //*****************************************************************************
 // Helper Functions
 //*****************************************************************************
-string psp(int n) // Stands for p-space, but I want the name short
+string psp(int n)
 {
   string str(n, ' ');
   return str;
+}
+//*****************************************************************************
+bool doesNodeExist(string vertex)
+{
+  // Lookup vertex from symbol table
+  SymbolTableT::iterator it;
+  for (it = SymbolTable.begin(); it != SymbolTable.end(); it++) {
+    if (strcmp(it->first.c_str(), vertex.c_str()) == 0)
+      return true;
+  }
+  return false;
+}
+//*****************************************************************************
+void addNodeToSet(string vertex, string label, bool update)
+{
+  // Create node string
+  string node = "\n  var "
+    + vertex
+    + " = graph.createNode({renderData: {name: '"
+    + label
+    + "'}});";
+
+  if (doesNodeExist(vertex)) {
+    // If allowed, update
+    if (update) {
+      string prefix = "\n  var " + vertex + " = ";
+      for (vector<string>::iterator linesit = nodeLines.begin(); linesit != nodeLines.end(); linesit++) {
+        string s = *linesit;
+        if (s.find(prefix) == 0) {
+          *linesit = node;
+        }
+      }
+    }
+  } else {
+    // If not found, write to node lines
+    nodeLines.push_back(node);
+    SymbolTable.insert(pair<string, string>(vertex, label));
+  }
 }

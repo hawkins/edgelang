@@ -51,21 +51,21 @@ _ -> C, 7
 
 ## Parser
 
-A recursive descent parser is included in `/parser`.
+A recursive descent parser is included in `/src`.
 This can be made by running `make` inside the directory.
 
-The parser will parse the input file, as well as write a JS output file with Node View so you can view the generated graph by loading `parser/test/index.html` in your browser, provided you use Edge to generate `test.js`.
+The parser will parse the input file, as well as write a JS output file with Node View so you can view the generated graph by loading `src/test/index.html` in your browser, provided you use Edge to generate `test.js`.
 
 This parser can be tested by running commands such as:
 
 ```
-cd parser
+cd src
 make
 ./parse.exe -i test/program0.edge -o test/test.js
 ```
 
-Alternatively, you can use the REPL with the `-r` flag:
+Alternatively, you can use the REPL by omitting the `-i` flag:
 
 ```
-./parse.exe -r -o test/test.js
+./parse.exe -o test/test.js
 ```
