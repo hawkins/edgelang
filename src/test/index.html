@@ -6,18 +6,19 @@
         <style>
             * { margin: 0; padding: 0;}
             body, html { height:100%; overflow: hidden}
-            #edgecanvas {
-                position:absolute;
-                width:100%;
-                height:100%;
+            .node {
+                fill: #ccc;
+                stroke: #fff;
+                stroke-width: 1px;
+            }
+            .link {
+                stroke: #777;
+                stroke-width: 2px;
             }
         </style>
     </head>
     <body>
-        <canvas id="edgecanvas">
-            You don't support Canvas from HTML 5.  Upgrade your browser dude jeez
-        </canvas>
-        <script src="nodeview.min.js"></script>
+        <script src='https://d3js.org/d3.v3.min.js'></script>
         <script src="test.js"></script>
     </body>
 </html>
