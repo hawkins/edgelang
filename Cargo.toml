@@ -1,0 +1,6 @@
+[package]
+name = "edgelang"
+version = "0.1.0"
+authors = ["hawkins <hawkinswritescode@gmail.com>"]
+
+[dependencies]

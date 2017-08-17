@@ -3,3 +3,5 @@
 pa3_prodrules.md
 *.exe
 edge
+/target/
+**/*.rs.bk
