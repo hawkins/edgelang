@@ -1,0 +1,6 @@
+#pragma once
+#define EDGE_OPT_PARSETREE 0x101
+#define EDGE_OPT_JS 0x102
+#define EDGE_OPT_INPUT 0x103
+#define EDGE_OPT_DIRECTED 0x104
+
